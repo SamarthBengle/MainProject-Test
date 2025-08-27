@@ -93,7 +93,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/MainProject-Examples-Test
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.EXAMPLES_REPO_TOKEN }}
           path: examples-repo
           ref: main
 
