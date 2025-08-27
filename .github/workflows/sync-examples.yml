@@ -28,6 +28,7 @@ jobs:
             echo "Current examples:"
             cat current_examples.txt
           else
+            echo "No sootup.examples directory found"
             touch current_examples.txt
           fi
           
@@ -58,12 +59,43 @@ jobs:
       - name: Checkout MainProject-Test
         uses: actions/checkout@v4
 
+      - name: Check if target repository exists
+        id: check-repo
+        run: |
+          if curl -s -f -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+             "https://api.github.com/repos/${{ github.repository_owner }}/MainProject-Examples-Test" > /dev/null; then
+            echo "repo_exists=true" >> $GITHUB_OUTPUT
+            echo "Target repository exists"
+          else
+            echo "repo_exists=false" >> $GITHUB_OUTPUT
+            echo "Target repository does not exist or is not accessible"
+          fi
+
+      - name: Create target repository if it doesn't exist
+        if: steps.check-repo.outputs.repo_exists == 'false'
+        run: |
+          echo "Creating MainProject-Examples-Test repository..."
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos" \
+            -d '{
+              "name": "MainProject-Examples-Test",
+              "description": "Automatically synced examples from MainProject-Test",
+              "private": false,
+              "auto_init": true
+            }'
+          
+          # Wait a moment for the repository to be ready
+          sleep 5
+
       - name: Checkout Examples Repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/MainProject-Examples-Test
           token: ${{ secrets.GITHUB_TOKEN }}
           path: examples-repo
+          ref: main
 
       - name: Sync new examples
         run: |
@@ -101,7 +133,7 @@ jobs:
             echo "Synced on: $(date)" >> commit_msg.txt
           
             git commit -F commit_msg.txt
-            git push
+            git push origin main
             echo "Changes committed and pushed successfully"
           else
             echo "No changes to commit"
